@@ -17,7 +17,7 @@
   <!-- مكتبة SheetJS لتصدير النتائج إلى Excel -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
-    /* إعدادات الخطوط والألوان الأساسية */
+    /* الإعدادات الأساسية */
     :root {
       --primary-color: #8B4513;
       --secondary-color: #1abc9c;
@@ -233,6 +233,45 @@
       text-align: center;
     }
     #scenarioComparison th { background-color: var(--primary-color); color: #fff; }
+    
+    /* التنسيق المتجاوب */
+    @media (max-width: 992px) {
+      .container {
+        margin: 20px;
+        padding: 20px;
+      }
+      h1 { font-size: 2em; }
+      h2 { font-size: 1.6em; }
+      h3 { font-size: 1.4em; }
+      input, select, button { font-size: 14px; padding: 8px; }
+      .result { font-size: 1em; padding: 15px; }
+    }
+    
+    @media (max-width: 768px) {
+      .container { margin: 10px; padding: 15px; }
+      h1 { font-size: 1.8em; }
+      h2 { font-size: 1.4em; }
+      h3 { font-size: 1.2em; }
+      input, select, button { font-size: 13px; padding: 6px; }
+      table, thead, tbody, th, td, tr { display: block; }
+      table { overflow-x: auto; white-space: nowrap; }
+      #scenarioComparison table { display: block; overflow-x: auto; }
+    }
+    
+    @media (max-width: 480px) {
+      #modeToggle {
+        top: 10px;
+        left: 10px;
+        padding: 8px 12px;
+        font-size: 12px;
+      }
+      #backToTop {
+        bottom: 20px;
+        right: 10px;
+        padding: 8px;
+        font-size: 1.2em;
+      }
+    }
   </style>
 </head>
 <body>
@@ -342,7 +381,7 @@
     <div class="section" data-aos="fade-up">
       <h2>تحليل السيناريوهات</h2>
       <p style="color: #555;">يمكنك تجربة نسب تحميل مختلفة لتعديل قيمة الأحمال مؤقتاً (مثلاً 80%، 100%، 120%)، ثم حفظ السيناريو الحالي وعرض جدول مقارنة مفصل لجميع السيناريوهات لتقييم تأثير التغييرات على ردود الفعل والمخططات.</p>
-      <div style="display:flex; gap:10px; margin-bottom:20px;">
+      <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;">
         <button onclick="calculateScenario(0.8)" class="btn-animate"><i class="fas fa-percentage"></i> 80%</button>
         <button onclick="calculateScenario(1)" class="btn-animate"><i class="fas fa-percentage"></i> 100%</button>
         <button onclick="calculateScenario(1.2)" class="btn-animate"><i class="fas fa-percentage"></i> 120%</button>
@@ -383,7 +422,7 @@
   <!-- زر العودة للأعلى -->
   <button id="backToTop" title="العودة للأعلى" aria-label="العودة للأعلى">↑</button>
   
-  <!-- الفوتر (يظهر مرة واحدة فقط) -->
+  <!-- الفوتر -->
   <footer style="background: #333; color: #ccc; padding: 20px; text-align: center; direction: rtl; margin-top: 40px;">
     <p style="margin-bottom: 10px;">© 2024 منصة الاتحاد العام للمقاولين اليمنيين - جميع الحقوق محفوظة</p>
     <p>
@@ -414,17 +453,17 @@
     // حفظ البيانات في localStorage
     function saveInputs() {
       const inputs = {
-        projectName: document.getElementById('projectName').value,
-        totalCost: document.getElementById('totalCost').value,
-        exchangeRate: document.getElementById('exchangeRate').value,
-        buildingType: document.getElementById('buildingType').value,
-        buildingUsage: document.getElementById('buildingUsage').value,
-        financingType: document.getElementById('financingType').value,
-        financingPercent: document.getElementById('financingPercent').value,
-        annualRevenue: document.getElementById('annualRevenue').value,
-        annualExpenses: document.getElementById('annualExpenses').value,
-        interestRate: document.getElementById('interestRate').value,
-        projectDuration: document.getElementById('projectDuration').value
+        projectName: document.getElementById('projectName') ? document.getElementById('projectName').value : "",
+        totalCost: document.getElementById('totalCost') ? document.getElementById('totalCost').value : "",
+        exchangeRate: document.getElementById('exchangeRate') ? document.getElementById('exchangeRate').value : "",
+        buildingType: document.getElementById('buildingType') ? document.getElementById('buildingType').value : "",
+        buildingUsage: document.getElementById('buildingUsage') ? document.getElementById('buildingUsage').value : "",
+        financingType: document.getElementById('financingType') ? document.getElementById('financingType').value : "",
+        financingPercent: document.getElementById('financingPercent') ? document.getElementById('financingPercent').value : "",
+        annualRevenue: document.getElementById('annualRevenue') ? document.getElementById('annualRevenue').value : "",
+        annualExpenses: document.getElementById('annualExpenses') ? document.getElementById('annualExpenses').value : "",
+        interestRate: document.getElementById('interestRate') ? document.getElementById('interestRate').value : "",
+        projectDuration: document.getElementById('projectDuration') ? document.getElementById('projectDuration').value : ""
       };
       localStorage.setItem('engCalcInputs', JSON.stringify(inputs));
     }
@@ -434,17 +473,17 @@
       const saved = localStorage.getItem('engCalcInputs');
       if (saved) {
         const inputs = JSON.parse(saved);
-        document.getElementById('projectName').value = inputs.projectName || "";
-        document.getElementById('totalCost').value = inputs.totalCost || "";
-        document.getElementById('exchangeRate').value = inputs.exchangeRate || "250";
-        document.getElementById('buildingType').value = inputs.buildingType || "residential";
-        document.getElementById('buildingUsage').value = inputs.buildingUsage || "residential";
-        document.getElementById('financingType').value = inputs.financingType || "bankLoan";
-        document.getElementById('financingPercent').value = inputs.financingPercent || "30";
-        document.getElementById('annualRevenue').value = inputs.annualRevenue || "";
-        document.getElementById('annualExpenses').value = inputs.annualExpenses || "";
-        document.getElementById('interestRate').value = inputs.interestRate || "8";
-        document.getElementById('projectDuration').value = inputs.projectDuration || "10";
+        if(document.getElementById('projectName')) document.getElementById('projectName').value = inputs.projectName || "";
+        if(document.getElementById('totalCost')) document.getElementById('totalCost').value = inputs.totalCost || "";
+        if(document.getElementById('exchangeRate')) document.getElementById('exchangeRate').value = inputs.exchangeRate || "250";
+        if(document.getElementById('buildingType')) document.getElementById('buildingType').value = inputs.buildingType || "residential";
+        if(document.getElementById('buildingUsage')) document.getElementById('buildingUsage').value = inputs.buildingUsage || "residential";
+        if(document.getElementById('financingType')) document.getElementById('financingType').value = inputs.financingType || "bankLoan";
+        if(document.getElementById('financingPercent')) document.getElementById('financingPercent').value = inputs.financingPercent || "30";
+        if(document.getElementById('annualRevenue')) document.getElementById('annualRevenue').value = inputs.annualRevenue || "";
+        if(document.getElementById('annualExpenses')) document.getElementById('annualExpenses').value = inputs.annualExpenses || "";
+        if(document.getElementById('interestRate')) document.getElementById('interestRate').value = inputs.interestRate || "8";
+        if(document.getElementById('projectDuration')) document.getElementById('projectDuration').value = inputs.projectDuration || "10";
       }
     }
     
@@ -455,7 +494,9 @@
         .then(data => {
           if(data && data.rates && data.rates["YER"]) {
             const rate = data.rates["YER"];
-            document.getElementById("exchangeRate").value = rate;
+            if(document.getElementById("exchangeRate")) {
+              document.getElementById("exchangeRate").value = rate;
+            }
             alert("تم تحديث سعر الصرف: " + rate);
             saveInputs();
           } else {
@@ -674,7 +715,7 @@
     let savedScenarios = [];
     function saveScenario() {
       const scenario = {
-        projectName: document.getElementById('projectName').value || "المشروع غير محدد",
+        projectName: document.getElementById('projectName') ? document.getElementById('projectName').value : "المشروع غير محدد",
         loadFactor: currentLoadFactor,
         reactionLeft: document.getElementById('reactionLeft').innerText,
         reactionRight: document.getElementById('reactionRight').innerText,
@@ -752,17 +793,17 @@
     
     // دالة إعادة تعيين الحقول لحاسبة توزيع الأحمال
     function resetLoadCalculator() {
-      document.getElementById('projectName').value = "";
-      document.getElementById('totalCost').value = "";
-      document.getElementById('exchangeRate').value = "250";
-      document.getElementById('buildingType').selectedIndex = 0;
-      document.getElementById('buildingUsage').selectedIndex = 0;
-      document.getElementById('financingType').selectedIndex = 0;
-      document.getElementById('financingPercent').value = "30";
-      document.getElementById('annualRevenue').value = "";
-      document.getElementById('annualExpenses').value = "";
-      document.getElementById('interestRate').value = "8";
-      document.getElementById('projectDuration').value = "10";
+      if(document.getElementById('projectName')) document.getElementById('projectName').value = "";
+      if(document.getElementById('totalCost')) document.getElementById('totalCost').value = "";
+      if(document.getElementById('exchangeRate')) document.getElementById('exchangeRate').value = "250";
+      if(document.getElementById('buildingType')) document.getElementById('buildingType').selectedIndex = 0;
+      if(document.getElementById('buildingUsage')) document.getElementById('buildingUsage').selectedIndex = 0;
+      if(document.getElementById('financingType')) document.getElementById('financingType').selectedIndex = 0;
+      if(document.getElementById('financingPercent')) document.getElementById('financingPercent').value = "30";
+      if(document.getElementById('annualRevenue')) document.getElementById('annualRevenue').value = "";
+      if(document.getElementById('annualExpenses')) document.getElementById('annualExpenses').value = "";
+      if(document.getElementById('interestRate')) document.getElementById('interestRate').value = "8";
+      if(document.getElementById('projectDuration')) document.getElementById('projectDuration').value = "10";
       // مدخلات توزيع الأحمال
       document.getElementById('beamLength').value = "";
       document.getElementById('uniformLoad').value = "";
