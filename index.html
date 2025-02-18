@@ -1,0 +1,1787 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>حاسبة توزيع الأحمال – تحليل تفصيلي لاستقرار المنشآت</title>
+  <!-- استدعاء الخطوط وأيقونات Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <!-- خط "Cairo" لتحسين العرض -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap">
+  <!-- مكتبة Chart.js للرسم البياني -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- مكتبة AOS لتأثيرات الحركة -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css">
+  <!-- مكتبة jsPDF لتصدير النتائج إلى PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- مكتبة SheetJS لتصدير النتائج إلى Excel -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    /* الإعدادات الأساسية */
+    :root {
+      --primary-color: #8B4513;
+      --secondary-color: #1abc9c;
+      --accent-color: #FFD700;
+      --text-color: #333;
+      --bg-gradient: linear-gradient(45deg, #654321, #8B4513, #A0522D);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; scroll-behavior: smooth; }
+    body {
+      font-family: 'Cairo', sans-serif;
+      background: var(--bg-gradient);
+      background-size: 400% 400%;
+      min-height: 100vh;
+      position: relative;
+      direction: rtl;
+      color: var(--text-color);
+      transition: background 0.5s, color 0.5s;
+    }
+    body.light-mode {
+      --primary-color: #4a4a4a;
+      --secondary-color: #3498db;
+      --accent-color: #e67e22;
+      --text-color: #333;
+      --bg-gradient: linear-gradient(45deg, #f0f0f0, #fff);
+      background: var(--bg-gradient);
+    }
+    @keyframes gradientBG { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+    /* شاشة التحميل */
+    .loader {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: var(--bg-gradient);
+      display: flex; justify-content: center; align-items: center; z-index: 3000;
+    }
+    .loader::after {
+      content: "";
+      width: 50px; height: 50px;
+      border: 5px solid var(--secondary-color);
+      border-top-color: var(--accent-color);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    /* قائمة التنقل – التصميم الموحد */
+    header {
+      background-color: var(--primary-color);
+      color: var(--accent-color);
+      padding: 15px 20px;
+      text-align: center;
+      position: relative;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    }
+    header .logo {
+      font-size: 2.2em; font-weight: 700; margin-bottom: 10px;
+      color: var(--accent-color);
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    }
+    nav {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+      gap: 8px; margin-top: 10px;
+    }
+    nav a {
+      background-color: rgba(255,255,255,0.2);
+      padding: 8px; border-radius: 8px;
+      text-decoration: none; color: #fff; font-size: 0.9em;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      transition: background 0.3s, transform 0.3s;
+    }
+    nav a i { font-size: 1.2em; margin-bottom: 4px; }
+    nav a:hover { background-color: var(--secondary-color); transform: scale(1.05); }
+    .toggle-btn {
+      background-color: rgba(255,255,255,0.2);
+      color: #fff; border: none; padding: 8px; border-radius: 8px;
+      cursor: pointer; transition: background 0.3s, transform 0.3s;
+    }
+    .toggle-btn:hover { background-color: var(--secondary-color); transform: scale(1.05); }
+    /* الحاوية الرئيسية */
+    .container {
+      max-width: 1200px; margin: 30px auto; padding: 30px;
+      background-color: #fff; border-radius: 8px; box-shadow: 0 0 15px rgba(0,0,0,0.1);
+      direction: rtl;
+    }
+    h1 { text-align: center; color: var(--primary-color); margin-bottom: 20px; font-size: 2.5em; }
+    h2 { color: var(--primary-color); margin-bottom: 10px; border-bottom: 2px solid var(--primary-color); padding-bottom: 10px; font-size: 1.8em; }
+    h3 { color: var(--secondary-color); margin-bottom: 10px; font-size: 1.6em; }
+    label { display: block; margin-bottom: 8px; font-weight: bold; }
+    input, select, button {
+      width: 100%; padding: 10px; margin-bottom: 15px;
+      border: 1px solid #ccc; border-radius: 4px; font-size: 16px;
+    }
+    button {
+      background-color: var(--primary-color); color: #fff; cursor: pointer; border: none;
+      transition: background 0.3s, transform 0.3s;
+    }
+    button:hover { background-color: var(--accent-color); transform: scale(1.02); }
+    .section { margin-bottom: 40px; padding-bottom: 20px; border-bottom: 1px solid #eee; }
+    .result {
+      margin-top: 20px; padding: 20px; background-color: #ecf0f1;
+      border-radius: 4px; text-align: center; font-size: 1.2em;
+    }
+    .chart-container { margin-top: 30px; }
+    .export-buttons { margin-top: 20px; text-align: center; }
+    .export-buttons button { margin: 5px; }
+    .reset-button { background-color: #d9534f; margin-bottom: 20px; }
+    .reset-button:hover { background-color: #c9302c; }
+    /* قسم حاسبة توزيع الأحمال */
+    .calc-section {
+      margin-top: 20px; padding: 15px; background-color: #f7f7f7;
+      border: 1px solid #ddd; border-radius: 5px;
+    }
+    /* قسم السيناريوهات */
+    #scenarioResults {
+      margin-top: 20px; padding: 15px; background-color: #f7f7f7;
+      border: 1px solid #ddd; border-radius: 5px;
+    }
+    #scenarioComparison {
+      margin-top: 20px;
+    }
+    /* أقسام التقارير، المؤشرات والتوصيات والمراجع */
+    .info-section {
+      margin-top: 40px; padding: 20px; background-color: #f9f9f9;
+      border-radius: 8px; border: 1px solid #ddd; font-size: 1.1em;
+    }
+    .info-section h2 { color: var(--primary-color); margin-bottom: 10px; }
+    .info-section p { margin-bottom: 10px; color: #555; line-height: 1.6; }
+    .info-section ul { list-style-type: disc; margin-right: 20px; color: #555; }
+    .info-section ul li { margin-bottom: 5px; }
+    /* حذف زر العودة للأعلى */
+    
+    /* تأثير حركي للأزرار */
+    .btn-animate { transition: transform 0.3s, box-shadow 0.3s; }
+    .btn-animate:hover { transform: scale(1.05); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+    
+    /* تنسيق جدول السيناريوهات */
+    #scenarioComparison table {
+      width: 100%; border-collapse: collapse; margin-top: 15px;
+    }
+    #scenarioComparison th, #scenarioComparison td {
+      border: 1px solid #ccc; padding: 10px; text-align: center;
+    }
+    #scenarioComparison th { background-color: var(--primary-color); color: #fff; }
+    
+    /* تنسيق رسم بياني مقارنة السيناريوهات */
+    #scenarioChartContainer {
+      margin-top: 20px;
+      background-color: #f7f7f7;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+    
+    /* التنسيق المتجاوب */
+    @media (max-width: 992px) {
+      .container { margin: 20px; padding: 20px; }
+      h1 { font-size: 2em; }
+      h2 { font-size: 1.6em; }
+      h3 { font-size: 1.4em; }
+      input, select, button { font-size: 14px; padding: 8px; }
+      .result { font-size: 1em; padding: 15px; }
+    }
+    @media (max-width: 768px) {
+      .container { margin: 10px; padding: 15px; }
+      h1 { font-size: 1.8em; }
+      h2 { font-size: 1.4em; }
+      h3 { font-size: 1.2em; }
+      input, select, button { font-size: 13px; padding: 6px; }
+      table, thead, tbody, th, td, tr { display: block; }
+      table { overflow-x: auto; white-space: nowrap; }
+      #scenarioComparison table { display: block; overflow-x: auto; }
+    }
+    @media (max-width: 480px) {
+      #modeToggle { top: 10px; left: 10px; padding: 8px 12px; font-size: 12px; }
+    }
+    
+    /* تنسيق نافذة سجل العمليات */
+    #historyModal {
+      display: none;
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background-color: rgba(0,0,0,0.5); z-index: 5000;
+      justify-content: center; align-items: center;
+    }
+    #historyModalContent {
+      background-color: #fff; width: 90%; max-width: 600px;
+      padding: 20px; border-radius: 8px; max-height: 80vh;
+      overflow-y: auto; position: relative;
+    }
+    #historyModalContent h2 { margin-bottom: 15px; }
+    #historyModalContent table { width: 100%; border-collapse: collapse; }
+    #historyModalContent table, #historyModalContent th, #historyModalContent td {
+      border: 1px solid #ccc;
+    }
+    #historyModalContent th, #historyModalContent td {
+      padding: 8px; text-align: center;
+    }
+    #closeHistory {
+      position: absolute; top: 10px; left: 10px;
+      background-color: #c9302c; color: #fff; border: none;
+      border-radius: 50%; width: 30px; height: 30px; font-size: 1.2em;
+      cursor: pointer; display: flex; align-items: center;
+      justify-content: center; transition: background 0.3s;
+    }
+    #closeHistory:hover { background-color: #a5281b; }
+  </style>
+</head>
+<body>
+  <!-- شاشة التحميل -->
+  <div id="loader" class="loader"></div>
+  
+  <!-- قائمة التنقل -->
+  <header>
+    <div class="logo">حاسبة توزيع الأحمال</div>
+    <nav>
+      <a href="#introduction" class="nav-item" data-key="introduction" data-icon="fas fa-home"></a>
+      <a href="#dataSection" class="nav-item" data-key="dataSection" data-icon="fas fa-info-circle"></a>
+      <a href="#loadResultSection" class="nav-item" data-key="resultSection" data-icon="fas fa-calculator"></a>
+      <a href="#loadChart" class="nav-item" data-key="chartSection" data-icon="fas fa-chart-line"></a>
+      <a href="#scenarioResults" class="nav-item" data-key="scenarioSection" data-icon="fas fa-tasks"></a>
+      <a href="#advancedReport" class="nav-item" data-key="advancedReport" data-icon="fas fa-file-alt"></a>
+      <a href="#financialStats" class="nav-item" data-key="financialStats" data-icon="fas fa-chart-bar"></a>
+      <a href="#recommendations" class="nav-item" data-key="recommendations" data-icon="fas fa-lightbulb"></a>
+      <a href="#userGuide" class="nav-item" data-key="userGuide" data-icon="fas fa-book"></a>
+      <a href="#internationalStandards" class="nav-item" data-key="internationalStandards" data-icon="fas fa-globe"></a>
+      <a href="#importantNotes" class="nav-item" data-key="importantNotes" data-icon="fas fa-exclamation-triangle"></a>
+      <!-- زر المراجع والمصادر الجديد -->
+      <a href="#references" class="nav-item" data-key="references" data-icon="fas fa-link"></a>
+      <!-- زر السجل -->
+      <a href="javascript:void(0)" id="historyToggle" class="nav-item toggle-btn" data-icon="fas fa-history"></a>
+      <!-- أزرار تبديل اللغة والوضع -->
+      <a href="javascript:void(0)" id="langToggle" class="nav-item toggle-btn" data-icon="fas fa-language"></a>
+      <a href="javascript:void(0)" id="modeToggle" class="nav-item toggle-btn" data-icon="fas fa-moon"></a>
+    </nav>
+  </header>
+  
+  <!-- المحتوى الرئيسي -->
+  <main>
+    <div class="container">
+      <h1>حاسبة توزيع الأحمال</h1>
+      <p style="text-align: center; color: #555;">
+        أداة متقدمة لتحليل توزيع الأحمال على المنشآت وضمان استقرارها وسلامتها وفقاً لأحدث المعايير الهندسية العالمية.
+      </p>
+      
+      <!-- قسم المقدمة -->
+      <div class="info-section" data-aos="fade-up" id="introduction">
+        <h2>المقدمة</h2>
+        <p>
+          مرحباً بكم في نظام حاسبة توزيع الأحمال. يهدف النظام إلى تقديم تحليل تفصيلي لتوزيع الأحمال على العتبات مع حساب ردود الفعل، مخططات الجرف والعزم، وتحليل السيناريوهات المختلفة لتقييم استقرار المنشأة. يعتمد النظام على أفضل الممارسات الهندسية والتصميمية العالمية.
+        </p>
+      </div>
+      
+      <!-- قسم البيانات الأساسية -->
+      <div class="section calc-section" id="dataSection" data-aos="fade-up">
+        <h2>البيانات الأساسية</h2>
+        <p style="color: #555; font-size: 1.1em;">
+          أدخل المعطيات التالية لتحليل توزيع الأحمال:
+          <br>• طول العتبة (L) بالأمتار.
+          <br>• الحمل الموزع الأساسي (w) بالكيلو نيوتن/م.
+          <br>• عامل التحميل الديناميكي.
+          <br>• الأحمال الإضافية (يمكن إدخال حتى 3 أحمال إضافية).
+        </p>
+        
+        <label for="beamLength" title="أدخل طول العتبة بالأمتار">طول العتبة (L) بالأمتار:</label>
+        <input type="number" id="beamLength" placeholder="مثال: 10" step="0.1">
+        
+        <label for="uniformLoad" title="أدخل الحمل الموزع الأساسي (kN/m)">الحمل الموزع الأساسي (w) بالكيلو نيوتن/م:</label>
+        <input type="number" id="uniformLoad" placeholder="مثال: 5" step="0.1">
+        
+        <label for="dynamicFactor" title="عامل التحميل الديناميكي (افتراضي 1)">عامل التحميل الديناميكي:</label>
+        <input type="number" id="dynamicFactor" placeholder="مثال: 1" step="0.1" value="1">
+        
+        <!-- جدول إدخال الأحمال الإضافية -->
+        <h3>إدخال الأحمال الإضافية</h3>
+        <p style="font-size: 0.9em; color: #555;">يمكنك إدخال حتى 3 أحمال إضافية؛ في حالة الحمل النقطي يتم تجاهل خانة "نهاية الحمل".</p>
+        <table style="width:100%; margin-bottom:15px; border:1px solid #ccc; border-collapse: collapse;">
+          <thead style="background-color: var(--primary-color); color: #fff;">
+            <tr>
+              <th style="padding:8px;">#</th>
+              <th style="padding:8px;">نوع الحمل</th>
+              <th style="padding:8px;">القيمة (kN)</th>
+              <th style="padding:8px;">الموقع (م)</th>
+              <th style="padding:8px;">نهاية الحمل (م)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="padding:8px;">1</td>
+              <td style="padding:8px;">
+                <select id="loadType1">
+                  <option value="point" selected>نقطة</option>
+                  <option value="distributed">موزعة</option>
+                </select>
+              </td>
+              <td style="padding:8px;"><input type="number" id="loadValue1" placeholder="مثال: 20" step="0.1"></td>
+              <td style="padding:8px;"><input type="number" id="loadPosition1" placeholder="مثال: 4" step="0.1"></td>
+              <td style="padding:8px;"><input type="number" id="loadEnd1" placeholder="---" step="0.1" disabled></td>
+            </tr>
+            <tr>
+              <td style="padding:8px;">2</td>
+              <td style="padding:8px;">
+                <select id="loadType2">
+                  <option value="point">نقطة</option>
+                  <option value="distributed" selected>موزعة</option>
+                </select>
+              </td>
+              <td style="padding:8px;"><input type="number" id="loadValue2" placeholder="مثال: 5" step="0.1"></td>
+              <td style="padding:8px;"><input type="number" id="loadPosition2" placeholder="بداية" step="0.1"></td>
+              <td style="padding:8px;"><input type="number" id="loadEnd2" placeholder="نهاية" step="0.1"></td>
+            </tr>
+            <tr>
+              <td style="padding:8px;">3</td>
+              <td style="padding:8px;">
+                <select id="loadType3">
+                  <option value="point" selected>نقطة</option>
+                  <option value="distributed">موزعة</option>
+                </select>
+              </td>
+              <td style="padding:8px;"><input type="number" id="loadValue3" placeholder="مثال: 15" step="0.1"></td>
+              <td style="padding:8px;"><input type="number" id="loadPosition3" placeholder="مثال: 7" step="0.1"></td>
+              <td style="padding:8px;"><input type="number" id="loadEnd3" placeholder="---" step="0.1" disabled></td>
+            </tr>
+          </tbody>
+        </table>
+        
+        <button onclick="calculateLoadDistribution(); recordCalculation();" class="btn-animate">
+          <i class="fas fa-calculator"></i> احسب توزيع الأحمال
+        </button>
+        <button class="reset-button btn-animate" onclick="resetLoadCalculator()">
+          <i class="fas fa-undo"></i> إعادة تعيين
+        </button>
+      </div>
+      
+      <!-- عرض النتائج -->
+      <div class="result" id="loadResultSection" data-aos="fade-up">
+        <h2>نتائج توزيع الأحمال</h2>
+        <p id="reactionLeft"></p>
+        <p id="reactionRight"></p>
+        <p id="maxShear"></p>
+        <p id="maxMoment"></p>
+        <div class="export-buttons">
+          <button onclick="printResult()" class="btn-animate"><i class="fas fa-print"></i> طباعة</button>
+          <button onclick="exportPDF()" class="btn-animate"><i class="fas fa-file-pdf"></i> مشاركة النتيجة</button>
+          <button onclick="exportExcel()" class="btn-animate"><i class="fas fa-file-excel"></i> تصدير إلى Excel</button>
+        </div>
+      </div>
+      
+      <!-- رسم بياني لتوزيع الجرف والعزم -->
+      <div class="chart-container" data-aos="fade-up">
+        <canvas id="loadChart"></canvas>
+      </div>
+      
+      <!-- قسم تحليل السيناريوهات -->
+      <div class="section" data-aos="fade-up">
+        <h2>تحليل السيناريوهات</h2>
+        <p style="color: #555;">
+          جرب نسب تحميل مختلفة لتعديل قيمة الحمل الموزع مؤقتاً، ثم احفظ السيناريو الحالي لعرض مقارنة تفصيلية.
+        </p>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;">
+          <button onclick="calculateScenario(0.8)" class="btn-animate"><i class="fas fa-percentage"></i> 80%</button>
+          <button onclick="calculateScenario(0.9)" class="btn-animate"><i class="fas fa-percentage"></i> 90%</button>
+          <button onclick="calculateScenario(1)" class="btn-animate"><i class="fas fa-percentage"></i> 100%</button>
+          <button onclick="calculateScenario(1.1)" class="btn-animate"><i class="fas fa-percentage"></i> 110%</button>
+          <button onclick="calculateScenario(1.2)" class="btn-animate"><i class="fas fa-percentage"></i> 120%</button>
+          <button onclick="calculateScenario(1.3)" class="btn-animate"><i class="fas fa-percentage"></i> 130%</button>
+        </div>
+        <div id="scenarioResults"></div>
+        <button onclick="saveScenario()" class="btn-animate" style="margin-top:10px;">
+          <i class="fas fa-save"></i> حفظ السيناريو الحالي
+        </button>
+        <!-- جدول مقارنة السيناريوهات -->
+        <div id="scenarioComparison"></div>
+        <!-- رسم بياني لمقارنة السيناريوهات -->
+        <div id="scenarioChartContainer" style="margin-top:20px;">
+          <canvas id="scenarioChart"></canvas>
+        </div>
+      </div>
+      
+      <!-- قسم تقارير متقدمة لتوزيع الأحمال -->
+      <div class="info-section" data-aos="fade-up" id="advancedReport">
+        <h2>تقارير متقدمة لتوزيع الأحمال</h2>
+        <div id="advancedReportContent">
+          <!-- سيتم عرض جدول مخططات الجرف والعزم مع المتوسطات هنا -->
+        </div>
+      </div>
+      
+      <!-- قسم المؤشرات الهندسية -->
+      <div class="info-section" data-aos="fade-up" id="financialStats">
+        <h2>المؤشرات الهندسية</h2>
+        <div id="financialStatsContent">
+          <!-- سيتم عرض المؤشرات مثل أقصى/متوسط الجرف والعزم هنا -->
+        </div>
+      </div>
+      
+      <!-- قسم التوصيات الهندسية -->
+      <div class="info-section" data-aos="fade-up" id="recommendations">
+        <h2>التوصيات الهندسية</h2>
+        <ul>
+          <li>راجع نتائج توزيع الأحمال مع مختصين للتأكد من صحة التصميم.</li>
+          <li>يُنصح بإجراء تحليلات تفصيلية باستخدام برامج التصميم الهندسية المتخصصة.</li>
+          <li>استخدم نتائج السيناريوهات لتحديد أفضل نسبة تحميل تناسب المنشأة.</li>
+        </ul>
+      </div>
+      
+      <!-- قسم دليل المستخدم -->
+      <div class="info-section" data-aos="fade-up" id="userGuide">
+        <h2>دليل المستخدم</h2>
+        <p>
+          يوفر هذا الدليل شرحاً مفصلاً لكيفية استخدام الحاسبة:
+        </p>
+        <ul>
+          <li>أدخل المعطيات الأساسية لتوزيع الأحمال.</li>
+          <li>أضف الأحمال الإضافية (إن وجدت) عبر الجدول.</li>
+          <li>اضغط على زر "احسب توزيع الأحمال" لاستعراض النتائج ورسم المخططات.</li>
+          <li>جرب نسب تحميل مختلفة من خلال قسم السيناريوهات واحفظها للمقارنة.</li>
+          <li>يمكنك تصدير النتائج إلى PDF أو Excel أو طباعتها مباشرةً.</li>
+        </ul>
+      </div>
+      
+      <!-- قسم المعايير الدولية -->
+      <div class="info-section" data-aos="fade-up" id="internationalStandards">
+        <h2>المعايير الدولية وأهمية توزيع الأحمال</h2>
+        <p>
+          تعتمد تصميمات المنشآت على معايير توزيع الأحمال الدولية لضمان السلامة الهيكلية. يساعد التحليل التفصيلي على تقليل المخاطر وتحسين أداء المنشأة.
+        </p>
+      </div>
+      
+      <!-- قسم الملاحظات الهامة -->
+      <div class="info-section" data-aos="fade-up" id="importantNotes">
+        <h2>ملاحظات هامة</h2>
+        <ul>
+          <li>تُعد النتائج تقديرية ويجب مراجعتها من قبل مختصين قبل اتخاذ القرارات التصميمية.</li>
+          <li>يُنصح باستخدام الحاسبة كأداة مساعدة إلى جانب التحليلات التفصيلية باستخدام برامج التصميم المتقدمة.</li>
+        </ul>
+      </div>
+      
+      <!-- قسم المراجع والمصادر -->
+      <div class="info-section" data-aos="fade-up" id="references">
+        <h2>المراجع والمصادر</h2>
+        <p>
+          يعتمد النظام على مجموعة من المعايير الهندسية العالمية والمراجع التالية:
+        </p>
+        <ul>
+          <li>معايير ACI و AISC في تصميم المنشآت.</li>
+          <li>الكتب والمراجع الهندسية المعتمدة في توزيع الأحمال.</li>
+          <li>المصادر الإلكترونية المتخصصة في الهندسة الإنشائية.</li>
+        </ul>
+      </div>
+      
+    </div>
+  </main>
+  
+  <!-- الفوتر -->
+  <footer style="background: #333; color: #ccc; padding: 20px; text-align: center; direction: rtl; margin-top: 40px;">
+    <p style="margin-bottom: 10px;">© 2024 منصة الاتحاد العام للمقاولين اليمنيين - جميع الحقوق محفوظة</p>
+    <p>
+      <a href="https://guyc-yemen.com/" style="color: var(--accent-color); text-decoration: none;">الموقع الرسمي</a> |
+      <a href="mailto:info@guyc-ye.com" style="color: var(--accent-color); text-decoration: none;">البريد الإلكتروني</a> |
+      <a href="tel:01450553" style="color: var(--accent-color); text-decoration: none;">01-450553</a>
+    </p>
+    <p style="margin-top: 10px;">
+      <a href="#" style="color: var(--accent-color); margin: 0 5px; text-decoration: none;"><i class="fab fa-facebook"></i></a>
+      <a href="#" style="color: var(--accent-color); margin: 0 5px; text-decoration: none;"><i class="fab fa-twitter"></i></a>
+      <a href="#" style="color: var(--accent-color); margin: 0 5px; text-decoration: none;"><i class="fab fa-youtube"></i></a>
+      <a href="#" style="color: var(--accent-color); margin: 0 5px; text-decoration: none;"><i class="fab fa-whatsapp"></i></a>
+    </p>
+  </footer>
+  
+  <!-- نافذة سجل العمليات (History Modal) -->
+  <div id="historyModal">
+    <div id="historyModalContent">
+      <button id="closeHistory">&times;</button>
+      <h2>سجل العمليات</h2>
+      <div id="historyList">
+        <!-- سيتم عرض آخر 10 سجل تلقائي هنا -->
+      </div>
+      <button onclick="clearHistory()" class="btn-animate" style="background-color:#c9302c; margin-top:10px;">
+        <i class="fas fa-trash"></i> مسح السجل
+      </button>
+    </div>
+  </div>
+  
+  <!-- استدعاء مكتبة AOS -->
+  <script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
+  <script>
+    window.addEventListener('load', () => {
+      AOS.init();
+      document.getElementById('loader').style.display = 'none';
+      loadInputs();
+      updateLanguage();
+      // استعادة تفضيل الوضع الليلي
+      const mode = localStorage.getItem('mode');
+      if(mode === 'light') { document.body.classList.add("light-mode"); }
+      // تسجيل دخول المستخدم (مرة واحدة لكل جلسة)
+      if (!sessionStorage.getItem('hasLogged')) {
+        saveLoginRecord();
+        sessionStorage.setItem('hasLogged', 'true');
+      }
+      loadHistory();
+    });
+  </script>
+  
+  <!-- دوال النظام والتطبيق -->
+  <script>
+    // تسجيل مستمعي أحداث زر السجل والإغلاق بعد تحميل DOM
+    window.addEventListener('DOMContentLoaded', function() {
+      document.getElementById("historyToggle").addEventListener("click", showHistoryModal);
+      document.getElementById("closeHistory").addEventListener("click", closeHistoryModal);
+    });
+    
+    // دوال تخزين واستعادة المدخلات (للنظام العام)
+    function saveInputs() {
+      const inputs = {
+        projectName: document.getElementById('projectName') ? document.getElementById('projectName').value : "",
+        totalCost: document.getElementById('totalCost') ? document.getElementById('totalCost').value : "",
+        exchangeRate: document.getElementById('exchangeRate') ? document.getElementById('exchangeRate').value : "",
+        buildingType: document.getElementById('buildingType') ? document.getElementById('buildingType').value : "",
+        buildingUsage: document.getElementById('buildingUsage') ? document.getElementById('buildingUsage').value : "",
+        financingType: document.getElementById('financingType') ? document.getElementById('financingType').value : "",
+        financingPercent: document.getElementById('financingPercent') ? document.getElementById('financingPercent').value : "",
+        annualRevenue: document.getElementById('annualRevenue') ? document.getElementById('annualRevenue').value : "",
+        annualExpenses: document.getElementById('annualExpenses') ? document.getElementById('annualExpenses').value : "",
+        interestRate: document.getElementById('interestRate') ? document.getElementById('interestRate').value : "",
+        projectDuration: document.getElementById('projectDuration') ? document.getElementById('projectDuration').value : ""
+      };
+      localStorage.setItem('engCalcInputs', JSON.stringify(inputs));
+    }
+    function loadInputs() {
+      const saved = localStorage.getItem('engCalcInputs');
+      if (saved) {
+        const inputs = JSON.parse(saved);
+        if(document.getElementById('projectName')) document.getElementById('projectName').value = inputs.projectName || "";
+        if(document.getElementById('totalCost')) document.getElementById('totalCost').value = inputs.totalCost || "";
+        if(document.getElementById('exchangeRate')) document.getElementById('exchangeRate').value = inputs.exchangeRate || "250";
+        if(document.getElementById('buildingType')) document.getElementById('buildingType').value = inputs.buildingType || "residential";
+        if(document.getElementById('buildingUsage')) document.getElementById('buildingUsage').value = inputs.buildingUsage || "residential";
+        if(document.getElementById('financingType')) document.getElementById('financingType').value = inputs.financingType || "bankLoan";
+        if(document.getElementById('financingPercent')) document.getElementById('financingPercent').value = inputs.financingPercent || "30";
+        if(document.getElementById('annualRevenue')) document.getElementById('annualRevenue').value = inputs.annualRevenue || "";
+        if(document.getElementById('annualExpenses')) document.getElementById('annualExpenses').value = inputs.annualExpenses || "";
+        if(document.getElementById('interestRate')) document.getElementById('interestRate').value = inputs.interestRate || "8";
+        if(document.getElementById('projectDuration')) document.getElementById('projectDuration').value = inputs.projectDuration || "10";
+      }
+    }
+    
+    // تحديث سعر الصرف
+    function updateExchangeRate() {
+      fetch("https://api.exchangerate-api.com/v4/latest/USD")
+        .then(response => response.json())
+        .then(data => {
+          if(data && data.rates && data.rates["YER"]) {
+            const rate = data.rates["YER"];
+            if(document.getElementById("exchangeRate")) {
+              document.getElementById("exchangeRate").value = rate;
+            }
+            alert("تم تحديث سعر الصرف: " + rate);
+            saveInputs();
+          } else { alert("تعذر الحصول على سعر الصرف."); }
+        })
+        .catch(err => alert("فشل تحديث سعر الصرف: " + err));
+    }
+    
+    // استخدام debounce لتحديث النتائج تلقائيًا
+    const inputFields = document.querySelectorAll('#dataSection input, #dataSection select');
+    let debounceTimer;
+    inputFields.forEach(field => {
+      field.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          calculateLoadDistribution();
+          saveInputs();
+        }, 500);
+      });
+    });
+    
+    // دالة حساب توزيع الأحمال مع إمكانية تمرير قيمة بديلة للحمل الموزع (لتحليل السيناريو)
+    function calculateLoadDistribution(uniformLoadOverride) {
+      const L = parseFloat(document.getElementById('beamLength').value);
+      if (!L || L <= 0) return;
+      let baseLoad = parseFloat(document.getElementById('uniformLoad').value);
+      if(uniformLoadOverride !== undefined) { baseLoad = uniformLoadOverride; }
+      const dynamicFactor = parseFloat(document.getElementById('dynamicFactor').value) || 1;
+      let w = baseLoad * dynamicFactor;
+      
+      // تعريف مصفوفة لتخزين الأحمال الإضافية
+      let loads = [];
+      function getLoad(loadType, value, pos, end) {
+        if (loadType === "point") {
+          return { P: parseFloat(value) || 0, a: parseFloat(pos) || 0 };
+        } else if (loadType === "distributed") {
+          let start = parseFloat(pos) || 0;
+          let finish = parseFloat(end) || start;
+          let total = (parseFloat(value) || 0) * (finish - start);
+          let mid = (start + finish) / 2;
+          return { P: total, a: mid };
+        }
+        return { P: 0, a: 0 };
+      }
+      let load1 = getLoad(
+        document.getElementById('loadType1').value,
+        document.getElementById('loadValue1').value,
+        document.getElementById('loadPosition1').value,
+        document.getElementById('loadEnd1').value
+      );
+      let load2 = getLoad(
+        document.getElementById('loadType2').value,
+        document.getElementById('loadValue2').value,
+        document.getElementById('loadPosition2').value,
+        document.getElementById('loadEnd2').value
+      );
+      let load3 = getLoad(
+        document.getElementById('loadType3').value,
+        document.getElementById('loadValue3').value,
+        document.getElementById('loadPosition3').value,
+        document.getElementById('loadEnd3').value
+      );
+      // لتأثير السيناريو، نطبق معامل تحميل على جميع الأحمال
+      loads.push(
+        { P: load1.P * (uniformLoadOverride !== undefined ? currentLoadFactor : 1), a: load1.a },
+        { P: load2.P * (uniformLoadOverride !== undefined ? currentLoadFactor : 1), a: load2.a },
+        { P: load3.P * (uniformLoadOverride !== undefined ? currentLoadFactor : 1), a: load3.a }
+      );
+      
+      // حساب إجمالي الحمل ومجموع العزوم
+      let totalLoad = 0, sumMoment = 0;
+      loads.forEach(load => {
+        totalLoad += load.P;
+        sumMoment += load.P * load.a;
+      });
+      let Rr = sumMoment / L;
+      let Rl = totalLoad - Rr;
+      
+      // حساب مخططات الجرف والعزم
+      let numPoints = 100;
+      let shearValues = [];
+      let momentValues = [];
+      for (let i = 0; i <= numPoints; i++) {
+        let x = (L / numPoints) * i;
+        let shear = Rl;
+        loads.forEach(load => { if (load.a <= x) { shear -= load.P; } });
+        shearValues.push(shear);
+        let moment = Rl * x;
+        loads.forEach(load => { if (load.a <= x) { moment -= load.P * (x - load.a); } });
+        momentValues.push(moment);
+      }
+      
+      document.getElementById('reactionLeft').innerText = "رد فعل اليسار (Rₗ): " + Rl.toFixed(2) + " kN";
+      document.getElementById('reactionRight').innerText = "رد فعل اليمين (Rᵣ): " + Rr.toFixed(2) + " kN";
+      let maxShear = Math.max(...shearValues.map(Math.abs));
+      let maxMoment = Math.max(...momentValues.map(Math.abs));
+      document.getElementById('maxShear').innerText = "أقصى جرف: " + maxShear.toFixed(2) + " kN";
+      document.getElementById('maxMoment').innerText = "أقصى عزم: " + maxMoment.toFixed(2) + " kN·m";
+      
+      updateLoadChart(L, shearValues, momentValues);
+      updateScenarioResult(
+        "Rₗ: " + Rl.toFixed(2) + " kN",
+        "Rᵣ: " + Rr.toFixed(2) + " kN",
+        "أقصى جرف: " + maxShear.toFixed(2) + " kN",
+        "أقصى عزم: " + maxMoment.toFixed(2) + " kN·m",
+        "السيناريو الأساسي"
+      );
+      // تحديث التقارير المتقدمة والإحصائيات الهندسية
+      generateAdvancedReport(shearValues, momentValues, L);
+      generateFinancialStats(shearValues, momentValues);
+    }
+    
+    // تحديث الرسم البياني باستخدام Chart.js
+    let loadChartInstance;
+    function updateLoadChart(L, shearValues, momentValues) {
+      const ctx = document.getElementById('loadChart').getContext('2d');
+      let labels = [];
+      let numPoints = shearValues.length;
+      for (let i = 0; i < numPoints; i++) {
+        let x = (L / (numPoints - 1)) * i;
+        labels.push(x.toFixed(2) + " م");
+      }
+      if (loadChartInstance) {
+        loadChartInstance.data.labels = labels;
+        loadChartInstance.data.datasets[0].data = shearValues;
+        loadChartInstance.data.datasets[1].data = momentValues;
+        loadChartInstance.update();
+      } else {
+        loadChartInstance = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: "مخطط الجرف (kN)",
+                data: shearValues,
+                backgroundColor: 'rgba(231,76,60,0.3)',
+                borderColor: 'rgba(231,76,60,1)',
+                borderWidth: 2,
+                fill: false,
+                tension: 0.3
+              },
+              {
+                label: "مخطط العزم (kN·m)",
+                data: momentValues,
+                backgroundColor: 'rgba(26,188,156,0.3)',
+                borderColor: 'rgba(26,188,156,1)',
+                borderWidth: 2,
+                fill: false,
+                tension: 0.3
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            animation: { duration: 1500, easing: 'easeOutQuart' },
+            scales: {
+              y: { beginAtZero: true },
+              x: { title: { display: true, text: "المسافة على العتبة (م)" } }
+            }
+          }
+        });
+      }
+    }
+    
+    // متغير لتخزين معامل التحميل الحالي
+    var currentLoadFactor = 1;
+    
+    // دالة تحليل السيناريوهات – تُعيد حساب النتائج باستخدام قيمة الحمل المعدلة دون تغيير المدخلات الأصلية
+    function calculateScenario(loadFactor) {
+      currentLoadFactor = loadFactor;
+      let baseUniformLoad = parseFloat(document.getElementById('uniformLoad').value);
+      let modifiedLoad = baseUniformLoad * loadFactor;
+      calculateLoadDistribution(modifiedLoad);
+      let scenarioText = `<h3>سيناريو تحميل بنسبة ${loadFactor * 100}%</h3>
+        <p><strong>${document.getElementById('reactionLeft').innerText}</strong></p>
+        <p><strong>${document.getElementById('reactionRight').innerText}</strong></p>
+        <p><strong>${document.getElementById('maxShear').innerText}</strong></p>
+        <p><strong>${document.getElementById('maxMoment').innerText}</strong></p>`;
+      document.getElementById('scenarioResults').innerHTML = scenarioText;
+      generateScenarioComparisonChart();
+    }
+    
+    // تحديث عرض النتائج الأساسية في قسم السيناريو
+    function updateScenarioResult(RlText, RrText, maxShearText, maxMomentText, scenarioName) {
+      const scenarioDiv = document.getElementById('scenarioResults');
+      scenarioDiv.innerHTML = `
+        <h3>${scenarioName}</h3>
+        <p><strong>${RlText}</strong></p>
+        <p><strong>${RrText}</strong></p>
+        <p><strong>${maxShearText}</strong></p>
+        <p><strong>${maxMomentText}</strong></p>
+      `;
+    }
+    
+    // دالة لتسجيل العملية الحسابية في السجل
+    function recordCalculation() {
+      let inputs = {
+        beamLength: document.getElementById('beamLength').value,
+        uniformLoad: document.getElementById('uniformLoad').value,
+        dynamicFactor: document.getElementById('dynamicFactor').value,
+        load1: { type: document.getElementById('loadType1').value, value: document.getElementById('loadValue1').value, position: document.getElementById('loadPosition1').value },
+        load2: { type: document.getElementById('loadType2').value, value: document.getElementById('loadValue2').value, position: document.getElementById('loadPosition2').value },
+        load3: { type: document.getElementById('loadType3').value, value: document.getElementById('loadValue3').value, position: document.getElementById('loadPosition3').value }
+      };
+      let results = {
+        reactionLeft: document.getElementById('reactionLeft').innerText,
+        reactionRight: document.getElementById('reactionRight').innerText,
+        maxShear: document.getElementById('maxShear').innerText,
+        maxMoment: document.getElementById('maxMoment').innerText
+      };
+      let record = {
+        type: "calculation",
+        inputs: inputs,
+        results: results,
+        timestamp: new Date().toLocaleString()
+      };
+      saveRecordToHistory(record);
+    }
+    
+    // حفظ سجل العملية في localStorage
+    function saveRecordToHistory(record) {
+      let history = JSON.parse(localStorage.getItem('calculationHistory')) || [];
+      history.unshift(record);
+      if(history.length > 10) history = history.slice(0,10);
+      localStorage.setItem('calculationHistory', JSON.stringify(history));
+      loadHistory();
+    }
+    
+    // دوال سجل العمليات
+    function saveLoginRecord() {
+      const record = {
+        type: "login",
+        timestamp: new Date().toLocaleString(),
+        projectName: "تسجيل الدخول",
+        results: "تم تسجيل الدخول إلى النظام"
+      };
+      saveRecordToHistory(record);
+    }
+    function loadHistory() {
+      const history = JSON.parse(localStorage.getItem('calculationHistory')) || [];
+      let html = "";
+      if(history.length === 0) {
+        html = "<p>لا يوجد سجل للعمليات الحسابية.</p>";
+      } else {
+        html += `<table>
+                  <thead>
+                    <tr style="background-color: var(--primary-color); color:#fff;">
+                      <th>التاريخ</th>
+                      <th>نوع العملية</th>
+                      <th>النتائج</th>
+                      <th>استعادة</th>
+                    </tr>
+                  </thead>
+                  <tbody>`;
+        history.forEach((item, index) => {
+          if(item.type === "login") {
+            html += `<tr>
+                      <td style="padding: 8px; border: 1px solid #ccc;">${item.timestamp}</td>
+                      <td style="padding: 8px; border: 1px solid #ccc;">تسجيل الدخول</td>
+                      <td style="padding: 8px; border: 1px solid #ccc;">${item.results}</td>
+                      <td style="padding: 8px; border: 1px solid #ccc;">-</td>
+                    </tr>`;
+          } else if(item.type === "calculation") {
+            html += `<tr>
+                      <td style="padding: 8px; border: 1px solid #ccc;">${item.timestamp}</td>
+                      <td style="padding: 8px; border: 1px solid #ccc;">عملية توزيع الأحمال</td>
+                      <td style="padding: 8px; border: 1px solid #ccc;">
+                        Rₗ: ${item.results.reactionLeft}<br>
+                        Rᵣ: ${item.results.reactionRight}<br>
+                        ${item.results.maxShear ? "الجرف: " + item.results.maxShear : ""}<br>
+                        ${item.results.maxMoment ? "العزم: " + item.results.maxMoment : ""}
+                      </td>
+                      <td style="padding: 8px; border: 1px solid #ccc;"><button onclick='restoreHistory(${index})' class="btn-animate" style="padding:5px;">استعادة</button></td>
+                    </tr>`;
+          }
+        });
+        html += `</tbody></table>`;
+      }
+      document.getElementById('historyList').innerHTML = html;
+    }
+    function restoreHistory(index) {
+      const history = JSON.parse(localStorage.getItem('calculationHistory')) || [];
+      if(history[index] && history[index].type === "calculation") {
+        const data = history[index].inputs;
+        if(document.getElementById('beamLength')) document.getElementById('beamLength').value = data.beamLength || "";
+        if(document.getElementById('uniformLoad')) document.getElementById('uniformLoad').value = data.uniformLoad || "";
+        if(document.getElementById('dynamicFactor')) document.getElementById('dynamicFactor').value = data.dynamicFactor || "1";
+        if(document.getElementById('loadType1')) document.getElementById('loadType1').value = data.load1.type || "point";
+        if(document.getElementById('loadValue1')) document.getElementById('loadValue1').value = data.load1.value || "";
+        if(document.getElementById('loadPosition1')) document.getElementById('loadPosition1').value = data.load1.position || "";
+        if(document.getElementById('loadType2')) document.getElementById('loadType2').value = data.load2.type || "distributed";
+        if(document.getElementById('loadValue2')) document.getElementById('loadValue2').value = data.load2.value || "";
+        if(document.getElementById('loadPosition2')) document.getElementById('loadPosition2').value = data.load2.position || "";
+        if(document.getElementById('loadType3')) document.getElementById('loadType3').value = data.load3.type || "point";
+        if(document.getElementById('loadValue3')) document.getElementById('loadValue3').value = data.load3.value || "";
+        if(document.getElementById('loadPosition3')) document.getElementById('loadPosition3').value = data.load3.position || "";
+        loadInputs();
+        calculateLoadDistribution();
+        closeHistoryModal();
+        showToast("تم استعادة البيانات من السجل.");
+      } else {
+        showToast("لا يمكن استعادة سجل تسجيل الدخول.");
+      }
+    }
+    function showHistoryModal() {
+      document.getElementById('historyModal').style.display = "flex";
+    }
+    function closeHistoryModal() {
+      document.getElementById('historyModal').style.display = "none";
+    }
+    function clearHistory() {
+      localStorage.removeItem('calculationHistory');
+      loadHistory();
+      showToast("تم مسح سجل العمليات.");
+    }
+    
+    // دوال التقارير المتقدمة والإحصائيات الهندسية
+    function generateAdvancedReport(shearValues, momentValues, L) {
+      let totalShear = shearValues.reduce((sum, val) => sum + val, 0);
+      let avgShear = totalShear / shearValues.length;
+      let totalMoment = momentValues.reduce((sum, val) => sum + val, 0);
+      let avgMoment = totalMoment / momentValues.length;
+      let content = '<table style="width:100%; border-collapse: collapse;">';
+      content += '<thead><tr style="background-color: var(--primary-color); color: #fff;">';
+      content += '<th style="padding: 10px; border: 1px solid #ccc;">المسافة (م)</th>';
+      content += '<th style="padding: 10px; border: 1px solid #ccc;">الجرف (kN)</th>';
+      content += '<th style="padding: 10px; border: 1px solid #ccc;">العزم (kN·m)</th>';
+      content += '</tr></thead><tbody>';
+      let numPoints = shearValues.length;
+      for (let i = 0; i < numPoints; i++) {
+        let x = (L / (numPoints - 1)) * i;
+        content += `<tr>
+                      <td style="padding: 10px; border: 1px solid #ccc;">${x.toFixed(2)}</td>
+                      <td style="padding: 10px; border: 1px solid #ccc;">${shearValues[i].toFixed(2)}</td>
+                      <td style="padding: 10px; border: 1px solid #ccc;">${momentValues[i].toFixed(2)}</td>
+                    </tr>`;
+      }
+      content += `<tr style="background-color: #f0f0f0;">
+                    <td style="padding: 10px; border: 1px solid #ccc;">المتوسط</td>
+                    <td style="padding: 10px; border: 1px solid #ccc;">${avgShear.toFixed(2)}</td>
+                    <td style="padding: 10px; border: 1px solid #ccc;">${avgMoment.toFixed(2)}</td>
+                  </tr>`;
+      content += '</tbody></table>';
+      document.getElementById('advancedReportContent').innerHTML = content;
+    }
+    
+    function generateFinancialStats(shearValues, momentValues) {
+      let maxShear = Math.max(...shearValues.map(Math.abs));
+      let maxMoment = Math.max(...momentValues.map(Math.abs));
+      let totalShear = shearValues.reduce((sum, val) => sum + val, 0);
+      let avgShear = totalShear / shearValues.length;
+      let totalMoment = momentValues.reduce((sum, val) => sum + val, 0);
+      let avgMoment = totalMoment / momentValues.length;
+      let statsHtml = `
+       <table style="width:100%; border-collapse: collapse;">
+         <thead>
+           <tr style="background-color: var(--primary-color); color:#fff;">
+             <th style="padding: 10px; border: 1px solid #ccc;">المؤشر</th>
+             <th style="padding: 10px; border: 1px solid #ccc;">القيمة</th>
+           </tr>
+         </thead>
+         <tbody>
+           <tr>
+             <td style="padding: 10px; border: 1px solid #ccc;">أقصى جرف</td>
+             <td style="padding: 10px; border: 1px solid #ccc;">${maxShear.toFixed(2)} kN</td>
+           </tr>
+           <tr>
+             <td style="padding: 10px; border: 1px solid #ccc;">متوسط الجرف</td>
+             <td style="padding: 10px; border: 1px solid #ccc;">${avgShear.toFixed(2)} kN</td>
+           </tr>
+           <tr>
+             <td style="padding: 10px; border: 1px solid #ccc;">أقصى عزم</td>
+             <td style="padding: 10px; border: 1px solid #ccc;">${maxMoment.toFixed(2)} kN·m</td>
+           </tr>
+           <tr>
+             <td style="padding: 10px; border: 1px solid #ccc;">متوسط العزم</td>
+             <td style="padding: 10px; border: 1px solid #ccc;">${avgMoment.toFixed(2)} kN·m</td>
+           </tr>
+         </tbody>
+       </table>
+      `;
+      document.getElementById('financialStatsContent').innerHTML = statsHtml;
+    }
+    
+    // دوال التصدير والطباعة
+    function printResult() { window.print(); }
+    function exportPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF("p", "mm", "a4");
+      doc.setFont("Arial", "normal");
+      doc.text("تقرير حاسبة توزيع الأحمال", 20, 20);
+      const results = document.getElementById("loadResultSection").innerText;
+      doc.text(results, 20, 40);
+      doc.text("يرجى مراجعة باقي الأقسام للحصول على التفاصيل الكاملة.", 20, 60);
+      doc.save("تقرير_توزيع_الأحمال.pdf");
+    }
+    function exportExcel() {
+      let data = [
+        ["Rₗ", document.getElementById('reactionLeft').innerText],
+        ["Rᵣ", document.getElementById('reactionRight').innerText],
+        ["أقصى جرف", document.getElementById('maxShear').innerText],
+        ["أقصى عزم", document.getElementById('maxMoment').innerText]
+      ];
+      let ws = XLSX.utils.aoa_to_sheet(data);
+      let wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "النتائج");
+      XLSX.writeFile(wb, "تقرير_توزيع_الأحمال.xlsx");
+    }
+    function copyToClipboardResult() {
+      const text = document.getElementById('loadResultSection').innerText;
+      const tempInput = document.createElement('textarea');
+      tempInput.value = text;
+      document.body.appendChild(tempInput);
+      tempInput.select();
+      document.execCommand('copy');
+      document.body.removeChild(tempInput);
+      showToast("تم نسخ النتيجة إلى الحافظة للمشاركة!");
+    }
+    
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.innerText = message;
+      toast.className = "show";
+      setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
+    }
+    
+    // دوال مقارنة السيناريوهات: إنشاء جدول مقارنة ورسوم بيانية
+    function generateScenarioComparisonChart() {
+      // إذا لم يكن هناك سيناريوهات محفوظة، لا تقم برسم الرسم البياني
+      if(savedScenarios.length === 0) return;
+      // جمع بيانات السيناريوهات: يمكن مقارنة Rₗ وRᵣ وmaxShear وmaxMoment لكل سيناريو
+      let labels = savedScenarios.map((scn, index) => "سيناريو " + (index + 1));
+      let RlValues = savedScenarios.map(scn => parseFloat(scn.reactionLeft.replace(/[^0-9.]/g, "")));
+      let RrValues = savedScenarios.map(scn => parseFloat(scn.reactionRight.replace(/[^0-9.]/g, "")));
+      let shearValues = savedScenarios.map(scn => parseFloat(scn.maxShear.replace(/[^0-9.]/g, "")));
+      let momentValues = savedScenarios.map(scn => parseFloat(scn.maxMoment.replace(/[^0-9.]/g, "")));
+      
+      // رسم بياني مقارن باستخدام Chart.js
+      const ctx = document.getElementById('scenarioChart').getContext('2d');
+      if(window.scenarioChartInstance) { window.scenarioChartInstance.destroy(); }
+      window.scenarioChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: "Rₗ (kN)",
+              data: RlValues,
+              backgroundColor: "rgba(231,76,60,0.6)"
+            },
+            {
+              label: "Rᵣ (kN)",
+              data: RrValues,
+              backgroundColor: "rgba(52,152,219,0.6)"
+            },
+            {
+              label: "أقصى جرف (kN)",
+              data: shearValues,
+              backgroundColor: "rgba(46,204,113,0.6)"
+            },
+            {
+              label: "أقصى عزم (kN·m)",
+              data: momentValues,
+              backgroundColor: "rgba(155,89,182,0.6)"
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: { display: true, text: "مقارنة السيناريوهات" }
+          }
+        }
+      });
+    }
+    
+    // متغير لتخزين معامل التحميل الحالي
+    var currentLoadFactor = 1;
+    
+    // دالة تحليل السيناريوهات – تُعيد حساب النتائج باستخدام قيمة الحمل المعدلة دون تغيير المدخلات الأصلية
+    function calculateScenario(loadFactor) {
+      currentLoadFactor = loadFactor;
+      let baseUniformLoad = parseFloat(document.getElementById('uniformLoad').value);
+      let modifiedLoad = baseUniformLoad * loadFactor;
+      calculateLoadDistribution(modifiedLoad);
+      let scenarioText = `<h3>سيناريو تحميل بنسبة ${loadFactor * 100}%</h3>
+        <p><strong>${document.getElementById('reactionLeft').innerText}</strong></p>
+        <p><strong>${document.getElementById('reactionRight').innerText}</strong></p>
+        <p><strong>${document.getElementById('maxShear').innerText}</strong></p>
+        <p><strong>${document.getElementById('maxMoment').innerText}</strong></p>`;
+      document.getElementById('scenarioResults').innerHTML = scenarioText;
+      generateScenarioComparisonChart();
+    }
+    
+    // دالة تسجيل العملية في السجل
+    function recordCalculation() {
+      let inputs = {
+        beamLength: document.getElementById('beamLength').value,
+        uniformLoad: document.getElementById('uniformLoad').value,
+        dynamicFactor: document.getElementById('dynamicFactor').value,
+        load1: { type: document.getElementById('loadType1').value, value: document.getElementById('loadValue1').value, position: document.getElementById('loadPosition1').value },
+        load2: { type: document.getElementById('loadType2').value, value: document.getElementById('loadValue2').value, position: document.getElementById('loadPosition2').value },
+        load3: { type: document.getElementById('loadType3').value, value: document.getElementById('loadValue3').value, position: document.getElementById('loadPosition3').value }
+      };
+      let results = {
+        reactionLeft: document.getElementById('reactionLeft').innerText,
+        reactionRight: document.getElementById('reactionRight').innerText,
+        maxShear: document.getElementById('maxShear').innerText,
+        maxMoment: document.getElementById('maxMoment').innerText
+      };
+      let record = {
+        type: "calculation",
+        inputs: inputs,
+        results: results,
+        timestamp: new Date().toLocaleString()
+      };
+      saveRecordToHistory(record);
+    }
+    
+    // حفظ سجل العملية في localStorage
+    function saveRecordToHistory(record) {
+      let history = JSON.parse(localStorage.getItem('calculationHistory')) || [];
+      history.unshift(record);
+      if(history.length > 10) history = history.slice(0,10);
+      localStorage.setItem('calculationHistory', JSON.stringify(history));
+      loadHistory();
+    }
+    
+    // دوال سجل العمليات
+    function saveLoginRecord() {
+      const record = {
+        type: "login",
+        timestamp: new Date().toLocaleString(),
+        projectName: "تسجيل الدخول",
+        results: "تم تسجيل الدخول إلى النظام"
+      };
+      saveRecordToHistory(record);
+    }
+    function loadHistory() {
+      const history = JSON.parse(localStorage.getItem('calculationHistory')) || [];
+      let html = "";
+      if(history.length === 0) {
+        html = "<p>لا يوجد سجل للعمليات الحسابية.</p>";
+      } else {
+        html += `<table>
+                  <thead>
+                    <tr style="background-color: var(--primary-color); color:#fff;">
+                      <th>التاريخ</th>
+                      <th>نوع العملية</th>
+                      <th>النتائج</th>
+                      <th>استعادة</th>
+                    </tr>
+                  </thead>
+                  <tbody>`;
+        history.forEach((item, index) => {
+          if(item.type === "login") {
+            html += `<tr>
+                      <td style="padding: 8px; border: 1px solid #ccc;">${item.timestamp}</td>
+                      <td style="padding: 8px; border: 1px solid #ccc;">تسجيل الدخول</td>
+                      <td style="padding: 8px; border: 1px solid #ccc;">${item.results}</td>
+                      <td style="padding: 8px; border: 1px solid #ccc;">-</td>
+                    </tr>`;
+          } else if(item.type === "calculation") {
+            html += `<tr>
+                      <td style="padding: 8px; border: 1px solid #ccc;">${item.timestamp}</td>
+                      <td style="padding: 8px; border: 1px solid #ccc;">عملية توزيع الأحمال</td>
+                      <td style="padding: 8px; border: 1px solid #ccc;">
+                        Rₗ: ${item.results.reactionLeft}<br>
+                        Rᵣ: ${item.results.reactionRight}<br>
+                        ${item.results.maxShear ? "الجرف: " + item.results.maxShear : ""}<br>
+                        ${item.results.maxMoment ? "العزم: " + item.results.maxMoment : ""}
+                      </td>
+                      <td style="padding: 8px; border: 1px solid #ccc;"><button onclick='restoreHistory(${index})' class="btn-animate" style="padding:5px;">استعادة</button></td>
+                    </tr>`;
+          }
+        });
+        html += `</tbody></table>`;
+      }
+      document.getElementById('historyList').innerHTML = html;
+    }
+    function restoreHistory(index) {
+      const history = JSON.parse(localStorage.getItem('calculationHistory')) || [];
+      if(history[index] && history[index].type === "calculation") {
+        const data = history[index].inputs;
+        if(document.getElementById('beamLength')) document.getElementById('beamLength').value = data.beamLength || "";
+        if(document.getElementById('uniformLoad')) document.getElementById('uniformLoad').value = data.uniformLoad || "";
+        if(document.getElementById('dynamicFactor')) document.getElementById('dynamicFactor').value = data.dynamicFactor || "1";
+        if(document.getElementById('loadType1')) document.getElementById('loadType1').value = data.load1.type || "point";
+        if(document.getElementById('loadValue1')) document.getElementById('loadValue1').value = data.load1.value || "";
+        if(document.getElementById('loadPosition1')) document.getElementById('loadPosition1').value = data.load1.position || "";
+        if(document.getElementById('loadType2')) document.getElementById('loadType2').value = data.load2.type || "distributed";
+        if(document.getElementById('loadValue2')) document.getElementById('loadValue2').value = data.load2.value || "";
+        if(document.getElementById('loadPosition2')) document.getElementById('loadPosition2').value = data.load2.position || "";
+        if(document.getElementById('loadType3')) document.getElementById('loadType3').value = data.load3.type || "point";
+        if(document.getElementById('loadValue3')) document.getElementById('loadValue3').value = data.load3.value || "";
+        if(document.getElementById('loadPosition3')) document.getElementById('loadPosition3').value = data.load3.position || "";
+        loadInputs();
+        calculateLoadDistribution();
+        closeHistoryModal();
+        showToast("تم استعادة البيانات من السجل.");
+      } else { showToast("لا يمكن استعادة سجل تسجيل الدخول."); }
+    }
+    function showHistoryModal() { document.getElementById('historyModal').style.display = "flex"; }
+    function closeHistoryModal() { document.getElementById('historyModal').style.display = "none"; }
+    function clearHistory() {
+      localStorage.removeItem('calculationHistory');
+      loadHistory();
+      showToast("تم مسح سجل العمليات.");
+    }
+    
+    // دوال مقارنة السيناريوهات: إنشاء جدول مقارنة ورسوم بيانية
+    function generateScenarioComparisonChart() {
+      if(savedScenarios.length === 0) return;
+      let labels = savedScenarios.map((scn, index) => "سيناريو " + (index + 1));
+      let RlValues = savedScenarios.map(scn => parseFloat(scn.reactionLeft.replace(/[^0-9.]/g, "")));
+      let RrValues = savedScenarios.map(scn => parseFloat(scn.reactionRight.replace(/[^0-9.]/g, "")));
+      let shearValues = savedScenarios.map(scn => parseFloat(scn.maxShear.replace(/[^0-9.]/g, "")));
+      let momentValues = savedScenarios.map(scn => parseFloat(scn.maxMoment.replace(/[^0-9.]/g, "")));
+      
+      const ctx = document.getElementById('scenarioChart').getContext('2d');
+      if(window.scenarioChartInstance) { window.scenarioChartInstance.destroy(); }
+      window.scenarioChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: "Rₗ (kN)",
+              data: RlValues,
+              backgroundColor: "rgba(231,76,60,0.6)"
+            },
+            {
+              label: "Rᵣ (kN)",
+              data: RrValues,
+              backgroundColor: "rgba(52,152,219,0.6)"
+            },
+            {
+              label: "أقصى جرف (kN)",
+              data: shearValues,
+              backgroundColor: "rgba(46,204,113,0.6)"
+            },
+            {
+              label: "أقصى عزم (kN·m)",
+              data: momentValues,
+              backgroundColor: "rgba(155,89,182,0.6)"
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: { display: true, text: "مقارنة السيناريوهات" }
+          }
+        }
+      });
+    }
+    
+    // متغير لتخزين معامل التحميل الحالي
+    var currentLoadFactor = 1;
+    
+    // دالة تحليل السيناريوهات – تُعيد حساب النتائج باستخدام قيمة الحمل المعدلة دون تغيير المدخلات الأصلية
+    function calculateScenario(loadFactor) {
+      currentLoadFactor = loadFactor;
+      let baseUniformLoad = parseFloat(document.getElementById('uniformLoad').value);
+      let modifiedLoad = baseUniformLoad * loadFactor;
+      calculateLoadDistribution(modifiedLoad);
+      let scenarioText = `<h3>سيناريو تحميل بنسبة ${loadFactor * 100}%</h3>
+        <p><strong>${document.getElementById('reactionLeft').innerText}</strong></p>
+        <p><strong>${document.getElementById('reactionRight').innerText}</strong></p>
+        <p><strong>${document.getElementById('maxShear').innerText}</strong></p>
+        <p><strong>${document.getElementById('maxMoment').innerText}</strong></p>`;
+      document.getElementById('scenarioResults').innerHTML = scenarioText;
+      generateScenarioComparisonChart();
+    }
+    
+    // دالة تسجيل العملية في السجل
+    function recordCalculation() {
+      let inputs = {
+        beamLength: document.getElementById('beamLength').value,
+        uniformLoad: document.getElementById('uniformLoad').value,
+        dynamicFactor: document.getElementById('dynamicFactor').value,
+        load1: { type: document.getElementById('loadType1').value, value: document.getElementById('loadValue1').value, position: document.getElementById('loadPosition1').value },
+        load2: { type: document.getElementById('loadType2').value, value: document.getElementById('loadValue2').value, position: document.getElementById('loadPosition2').value },
+        load3: { type: document.getElementById('loadType3').value, value: document.getElementById('loadValue3').value, position: document.getElementById('loadPosition3').value }
+      };
+      let results = {
+        reactionLeft: document.getElementById('reactionLeft').innerText,
+        reactionRight: document.getElementById('reactionRight').innerText,
+        maxShear: document.getElementById('maxShear').innerText,
+        maxMoment: document.getElementById('maxMoment').innerText
+      };
+      let record = {
+        type: "calculation",
+        inputs: inputs,
+        results: results,
+        timestamp: new Date().toLocaleString()
+      };
+      saveRecordToHistory(record);
+    }
+    
+    // حفظ سجل العملية في localStorage
+    function saveRecordToHistory(record) {
+      let history = JSON.parse(localStorage.getItem('calculationHistory')) || [];
+      history.unshift(record);
+      if(history.length > 10) history = history.slice(0,10);
+      localStorage.setItem('calculationHistory', JSON.stringify(history));
+      loadHistory();
+    }
+    
+    // دوال سجل العمليات
+    function saveLoginRecord() {
+      const record = {
+        type: "login",
+        timestamp: new Date().toLocaleString(),
+        projectName: "تسجيل الدخول",
+        results: "تم تسجيل الدخول إلى النظام"
+      };
+      saveRecordToHistory(record);
+    }
+    function loadHistory() {
+      const history = JSON.parse(localStorage.getItem('calculationHistory')) || [];
+      let html = "";
+      if(history.length === 0) {
+        html = "<p>لا يوجد سجل للعمليات الحسابية.</p>";
+      } else {
+        html += `<table>
+                  <thead>
+                    <tr style="background-color: var(--primary-color); color:#fff;">
+                      <th>التاريخ</th>
+                      <th>نوع العملية</th>
+                      <th>النتائج</th>
+                      <th>استعادة</th>
+                    </tr>
+                  </thead>
+                  <tbody>`;
+        history.forEach((item, index) => {
+          if(item.type === "login") {
+            html += `<tr>
+                      <td style="padding: 8px; border: 1px solid #ccc;">${item.timestamp}</td>
+                      <td style="padding: 8px; border: 1px solid #ccc;">تسجيل الدخول</td>
+                      <td style="padding: 8px; border: 1px solid #ccc;">${item.results}</td>
+                      <td style="padding: 8px; border: 1px solid #ccc;">-</td>
+                    </tr>`;
+          } else if(item.type === "calculation") {
+            html += `<tr>
+                      <td style="padding: 8px; border: 1px solid #ccc;">${item.timestamp}</td>
+                      <td style="padding: 8px; border: 1px solid #ccc;">عملية توزيع الأحمال</td>
+                      <td style="padding: 8px; border: 1px solid #ccc;">
+                        Rₗ: ${item.results.reactionLeft}<br>
+                        Rᵣ: ${item.results.reactionRight}<br>
+                        ${item.results.maxShear ? "الجرف: " + item.results.maxShear : ""}<br>
+                        ${item.results.maxMoment ? "العزم: " + item.results.maxMoment : ""}
+                      </td>
+                      <td style="padding: 8px; border: 1px solid #ccc;"><button onclick='restoreHistory(${index})' class="btn-animate" style="padding:5px;">استعادة</button></td>
+                    </tr>`;
+          }
+        });
+        html += `</tbody></table>`;
+      }
+      document.getElementById('historyList').innerHTML = html;
+    }
+    function restoreHistory(index) {
+      const history = JSON.parse(localStorage.getItem('calculationHistory')) || [];
+      if(history[index] && history[index].type === "calculation") {
+        const data = history[index].inputs;
+        if(document.getElementById('beamLength')) document.getElementById('beamLength').value = data.beamLength || "";
+        if(document.getElementById('uniformLoad')) document.getElementById('uniformLoad').value = data.uniformLoad || "";
+        if(document.getElementById('dynamicFactor')) document.getElementById('dynamicFactor').value = data.dynamicFactor || "1";
+        if(document.getElementById('loadType1')) document.getElementById('loadType1').value = data.load1.type || "point";
+        if(document.getElementById('loadValue1')) document.getElementById('loadValue1').value = data.load1.value || "";
+        if(document.getElementById('loadPosition1')) document.getElementById('loadPosition1').value = data.load1.position || "";
+        if(document.getElementById('loadType2')) document.getElementById('loadType2').value = data.load2.type || "distributed";
+        if(document.getElementById('loadValue2')) document.getElementById('loadValue2').value = data.load2.value || "";
+        if(document.getElementById('loadPosition2')) document.getElementById('loadPosition2').value = data.load2.position || "";
+        if(document.getElementById('loadType3')) document.getElementById('loadType3').value = data.load3.type || "point";
+        if(document.getElementById('loadValue3')) document.getElementById('loadValue3').value = data.load3.value || "";
+        if(document.getElementById('loadPosition3')) document.getElementById('loadPosition3').value = data.load3.position || "";
+        loadInputs();
+        calculateLoadDistribution();
+        closeHistoryModal();
+        showToast("تم استعادة البيانات من السجل.");
+      } else {
+        showToast("لا يمكن استعادة سجل تسجيل الدخول.");
+      }
+    }
+    function showHistoryModal() { document.getElementById('historyModal').style.display = "flex"; }
+    function closeHistoryModal() { document.getElementById('historyModal').style.display = "none"; }
+    function clearHistory() {
+      localStorage.removeItem('calculationHistory');
+      loadHistory();
+      showToast("تم مسح سجل العمليات.");
+    }
+    
+    // دوال مقارنة السيناريوهات: إنشاء جدول مقارنة ورسوم بيانية
+    function generateScenarioComparisonChart() {
+      if(savedScenarios.length === 0) return;
+      let labels = savedScenarios.map((scn, index) => "سيناريو " + (index + 1));
+      let RlValues = savedScenarios.map(scn => parseFloat(scn.reactionLeft.replace(/[^0-9.]/g, "")));
+      let RrValues = savedScenarios.map(scn => parseFloat(scn.reactionRight.replace(/[^0-9.]/g, "")));
+      let shearValues = savedScenarios.map(scn => parseFloat(scn.maxShear.replace(/[^0-9.]/g, "")));
+      let momentValues = savedScenarios.map(scn => parseFloat(scn.maxMoment.replace(/[^0-9.]/g, "")));
+      
+      const ctx = document.getElementById('scenarioChart').getContext('2d');
+      if(window.scenarioChartInstance) { window.scenarioChartInstance.destroy(); }
+      window.scenarioChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            { label: "Rₗ (kN)", data: RlValues, backgroundColor: "rgba(231,76,60,0.6)" },
+            { label: "Rᵣ (kN)", data: RrValues, backgroundColor: "rgba(52,152,219,0.6)" },
+            { label: "أقصى جرف (kN)", data: shearValues, backgroundColor: "rgba(46,204,113,0.6)" },
+            { label: "أقصى عزم (kN·m)", data: momentValues, backgroundColor: "rgba(155,89,182,0.6)" }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: { title: { display: true, text: "مقارنة السيناريوهات" } }
+        }
+      });
+    }
+    
+    // متغير لتخزين معامل التحميل الحالي
+    var currentLoadFactor = 1;
+    
+    // دالة تحليل السيناريوهات – تُعيد حساب النتائج باستخدام قيمة الحمل المعدلة دون تغيير المدخلات الأصلية
+    function calculateScenario(loadFactor) {
+      currentLoadFactor = loadFactor;
+      let baseUniformLoad = parseFloat(document.getElementById('uniformLoad').value);
+      let modifiedLoad = baseUniformLoad * loadFactor;
+      calculateLoadDistribution(modifiedLoad);
+      let scenarioText = `<h3>سيناريو تحميل بنسبة ${loadFactor * 100}%</h3>
+        <p><strong>${document.getElementById('reactionLeft').innerText}</strong></p>
+        <p><strong>${document.getElementById('reactionRight').innerText}</strong></p>
+        <p><strong>${document.getElementById('maxShear').innerText}</strong></p>
+        <p><strong>${document.getElementById('maxMoment').innerText}</strong></p>`;
+      document.getElementById('scenarioResults').innerHTML = scenarioText;
+      generateScenarioComparisonChart();
+    }
+    
+    // دالة تسجيل العملية في السجل
+    function recordCalculation() {
+      let inputs = {
+        beamLength: document.getElementById('beamLength').value,
+        uniformLoad: document.getElementById('uniformLoad').value,
+        dynamicFactor: document.getElementById('dynamicFactor').value,
+        load1: { type: document.getElementById('loadType1').value, value: document.getElementById('loadValue1').value, position: document.getElementById('loadPosition1').value },
+        load2: { type: document.getElementById('loadType2').value, value: document.getElementById('loadValue2').value, position: document.getElementById('loadPosition2').value },
+        load3: { type: document.getElementById('loadType3').value, value: document.getElementById('loadValue3').value, position: document.getElementById('loadPosition3').value }
+      };
+      let results = {
+        reactionLeft: document.getElementById('reactionLeft').innerText,
+        reactionRight: document.getElementById('reactionRight').innerText,
+        maxShear: document.getElementById('maxShear').innerText,
+        maxMoment: document.getElementById('maxMoment').innerText
+      };
+      let record = {
+        type: "calculation",
+        inputs: inputs,
+        results: results,
+        timestamp: new Date().toLocaleString()
+      };
+      saveRecordToHistory(record);
+    }
+    
+    // حفظ سجل العملية في localStorage
+    function saveRecordToHistory(record) {
+      let history = JSON.parse(localStorage.getItem('calculationHistory')) || [];
+      history.unshift(record);
+      if(history.length > 10) history = history.slice(0,10);
+      localStorage.setItem('calculationHistory', JSON.stringify(history));
+      loadHistory();
+    }
+    
+    // دوال سجل العمليات
+    function saveLoginRecord() {
+      const record = {
+        type: "login",
+        timestamp: new Date().toLocaleString(),
+        projectName: "تسجيل الدخول",
+        results: "تم تسجيل الدخول إلى النظام"
+      };
+      saveRecordToHistory(record);
+    }
+    function loadHistory() {
+      const history = JSON.parse(localStorage.getItem('calculationHistory')) || [];
+      let html = "";
+      if(history.length === 0) {
+        html = "<p>لا يوجد سجل للعمليات الحسابية.</p>";
+      } else {
+        html += `<table>
+                  <thead>
+                    <tr style="background-color: var(--primary-color); color:#fff;">
+                      <th>التاريخ</th>
+                      <th>نوع العملية</th>
+                      <th>النتائج</th>
+                      <th>استعادة</th>
+                    </tr>
+                  </thead>
+                  <tbody>`;
+        history.forEach((item, index) => {
+          if(item.type === "login") {
+            html += `<tr>
+                      <td style="padding: 8px; border: 1px solid #ccc;">${item.timestamp}</td>
+                      <td style="padding: 8px; border: 1px solid #ccc;">تسجيل الدخول</td>
+                      <td style="padding: 8px; border: 1px solid #ccc;">${item.results}</td>
+                      <td style="padding: 8px; border: 1px solid #ccc;">-</td>
+                    </tr>`;
+          } else if(item.type === "calculation") {
+            html += `<tr>
+                      <td style="padding: 8px; border: 1px solid #ccc;">${item.timestamp}</td>
+                      <td style="padding: 8px; border: 1px solid #ccc;">عملية توزيع الأحمال</td>
+                      <td style="padding: 8px; border: 1px solid #ccc;">
+                        Rₗ: ${item.results.reactionLeft}<br>
+                        Rᵣ: ${item.results.reactionRight}<br>
+                        ${item.results.maxShear ? "الجرف: " + item.results.maxShear : ""}<br>
+                        ${item.results.maxMoment ? "العزم: " + item.results.maxMoment : ""}
+                      </td>
+                      <td style="padding: 8px; border: 1px solid #ccc;">
+                        <button onclick='restoreHistory(${index})' class="btn-animate" style="padding:5px;">استعادة</button>
+                      </td>
+                    </tr>`;
+          }
+        });
+        html += `</tbody></table>`;
+      }
+      document.getElementById('historyList').innerHTML = html;
+    }
+    function restoreHistory(index) {
+      const history = JSON.parse(localStorage.getItem('calculationHistory')) || [];
+      if(history[index] && history[index].type === "calculation") {
+        const data = history[index].inputs;
+        if(document.getElementById('beamLength')) document.getElementById('beamLength').value = data.beamLength || "";
+        if(document.getElementById('uniformLoad')) document.getElementById('uniformLoad').value = data.uniformLoad || "";
+        if(document.getElementById('dynamicFactor')) document.getElementById('dynamicFactor').value = data.dynamicFactor || "1";
+        if(document.getElementById('loadType1')) document.getElementById('loadType1').value = data.load1.type || "point";
+        if(document.getElementById('loadValue1')) document.getElementById('loadValue1').value = data.load1.value || "";
+        if(document.getElementById('loadPosition1')) document.getElementById('loadPosition1').value = data.load1.position || "";
+        if(document.getElementById('loadType2')) document.getElementById('loadType2').value = data.load2.type || "distributed";
+        if(document.getElementById('loadValue2')) document.getElementById('loadValue2').value = data.load2.value || "";
+        if(document.getElementById('loadPosition2')) document.getElementById('loadPosition2').value = data.load2.position || "";
+        if(document.getElementById('loadType3')) document.getElementById('loadType3').value = data.load3.type || "point";
+        if(document.getElementById('loadValue3')) document.getElementById('loadValue3').value = data.load3.value || "";
+        if(document.getElementById('loadPosition3')) document.getElementById('loadPosition3').value = data.load3.position || "";
+        loadInputs();
+        calculateLoadDistribution();
+        closeHistoryModal();
+        showToast("تم استعادة البيانات من السجل.");
+      } else { showToast("لا يمكن استعادة سجل تسجيل الدخول."); }
+    }
+    function showHistoryModal() { document.getElementById('historyModal').style.display = "flex"; }
+    function closeHistoryModal() { document.getElementById('historyModal').style.display = "none"; }
+    function clearHistory() {
+      localStorage.removeItem('calculationHistory');
+      loadHistory();
+      showToast("تم مسح سجل العمليات.");
+    }
+    
+    // دوال مقارنة السيناريوهات: إنشاء جدول مقارنة ورسوم بيانية
+    function generateScenarioComparisonChart() {
+      if(savedScenarios.length === 0) return;
+      let labels = savedScenarios.map((scn, index) => "سيناريو " + (index + 1));
+      let RlValues = savedScenarios.map(scn => parseFloat(scn.reactionLeft.replace(/[^0-9.]/g, "")));
+      let RrValues = savedScenarios.map(scn => parseFloat(scn.reactionRight.replace(/[^0-9.]/g, "")));
+      let shearValues = savedScenarios.map(scn => parseFloat(scn.maxShear.replace(/[^0-9.]/g, "")));
+      let momentValues = savedScenarios.map(scn => parseFloat(scn.maxMoment.replace(/[^0-9.]/g, "")));
+      
+      const ctx = document.getElementById('scenarioChart').getContext('2d');
+      if(window.scenarioChartInstance) { window.scenarioChartInstance.destroy(); }
+      window.scenarioChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            { label: "Rₗ (kN)", data: RlValues, backgroundColor: "rgba(231,76,60,0.6)" },
+            { label: "Rᵣ (kN)", data: RrValues, backgroundColor: "rgba(52,152,219,0.6)" },
+            { label: "أقصى جرف (kN)", data: shearValues, backgroundColor: "rgba(46,204,113,0.6)" },
+            { label: "أقصى عزم (kN·m)", data: momentValues, backgroundColor: "rgba(155,89,182,0.6)" }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: { title: { display: true, text: "مقارنة السيناريوهات" } }
+        }
+      });
+    }
+    
+    // متغير لتخزين معامل التحميل الحالي
+    var currentLoadFactor = 1;
+    
+    // دالة تحليل السيناريوهات – تُعيد حساب النتائج باستخدام قيمة الحمل المعدلة دون تغيير المدخلات الأصلية
+    function calculateScenario(loadFactor) {
+      currentLoadFactor = loadFactor;
+      let baseUniformLoad = parseFloat(document.getElementById('uniformLoad').value);
+      let modifiedLoad = baseUniformLoad * loadFactor;
+      calculateLoadDistribution(modifiedLoad);
+      let scenarioText = `<h3>سيناريو تحميل بنسبة ${loadFactor * 100}%</h3>
+        <p><strong>${document.getElementById('reactionLeft').innerText}</strong></p>
+        <p><strong>${document.getElementById('reactionRight').innerText}</strong></p>
+        <p><strong>${document.getElementById('maxShear').innerText}</strong></p>
+        <p><strong>${document.getElementById('maxMoment').innerText}</strong></p>`;
+      document.getElementById('scenarioResults').innerHTML = scenarioText;
+      generateScenarioComparisonChart();
+    }
+    
+    // دالة تسجيل العملية في السجل
+    function recordCalculation() {
+      let inputs = {
+        beamLength: document.getElementById('beamLength').value,
+        uniformLoad: document.getElementById('uniformLoad').value,
+        dynamicFactor: document.getElementById('dynamicFactor').value,
+        load1: { type: document.getElementById('loadType1').value, value: document.getElementById('loadValue1').value, position: document.getElementById('loadPosition1').value },
+        load2: { type: document.getElementById('loadType2').value, value: document.getElementById('loadValue2').value, position: document.getElementById('loadPosition2').value },
+        load3: { type: document.getElementById('loadType3').value, value: document.getElementById('loadValue3').value, position: document.getElementById('loadPosition3').value }
+      };
+      let results = {
+        reactionLeft: document.getElementById('reactionLeft').innerText,
+        reactionRight: document.getElementById('reactionRight').innerText,
+        maxShear: document.getElementById('maxShear').innerText,
+        maxMoment: document.getElementById('maxMoment').innerText
+      };
+      let record = {
+        type: "calculation",
+        inputs: inputs,
+        results: results,
+        timestamp: new Date().toLocaleString()
+      };
+      saveRecordToHistory(record);
+    }
+    
+    // حفظ سجل العملية في localStorage
+    function saveRecordToHistory(record) {
+      let history = JSON.parse(localStorage.getItem('calculationHistory')) || [];
+      history.unshift(record);
+      if(history.length > 10) history = history.slice(0,10);
+      localStorage.setItem('calculationHistory', JSON.stringify(history));
+      loadHistory();
+    }
+    
+    // دوال سجل العمليات
+    function saveLoginRecord() {
+      const record = {
+        type: "login",
+        timestamp: new Date().toLocaleString(),
+        projectName: "تسجيل الدخول",
+        results: "تم تسجيل الدخول إلى النظام"
+      };
+      saveRecordToHistory(record);
+    }
+    function loadHistory() {
+      const history = JSON.parse(localStorage.getItem('calculationHistory')) || [];
+      let html = "";
+      if(history.length === 0) {
+        html = "<p>لا يوجد سجل للعمليات الحسابية.</p>";
+      } else {
+        html += `<table>
+                  <thead>
+                    <tr style="background-color: var(--primary-color); color:#fff;">
+                      <th>التاريخ</th>
+                      <th>نوع العملية</th>
+                      <th>النتائج</th>
+                      <th>استعادة</th>
+                    </tr>
+                  </thead>
+                  <tbody>`;
+        history.forEach((item, index) => {
+          if(item.type === "login") {
+            html += `<tr>
+                      <td style="padding: 8px; border: 1px solid #ccc;">${item.timestamp}</td>
+                      <td style="padding: 8px; border: 1px solid #ccc;">تسجيل الدخول</td>
+                      <td style="padding: 8px; border: 1px solid #ccc;">${item.results}</td>
+                      <td style="padding: 8px; border: 1px solid #ccc;">-</td>
+                    </tr>`;
+          } else if(item.type === "calculation") {
+            html += `<tr>
+                      <td style="padding: 8px; border: 1px solid #ccc;">${item.timestamp}</td>
+                      <td style="padding: 8px; border: 1px solid #ccc;">عملية توزيع الأحمال</td>
+                      <td style="padding: 8px; border: 1px solid #ccc;">
+                        Rₗ: ${item.results.reactionLeft}<br>
+                        Rᵣ: ${item.results.reactionRight}<br>
+                        ${item.results.maxShear ? "الجرف: " + item.results.maxShear : ""}<br>
+                        ${item.results.maxMoment ? "العزم: " + item.results.maxMoment : ""}
+                      </td>
+                      <td style="padding: 8px; border: 1px solid #ccc;">
+                        <button onclick='restoreHistory(${index})' class="btn-animate" style="padding:5px;">استعادة</button>
+                      </td>
+                    </tr>`;
+          }
+        });
+        html += `</tbody></table>`;
+      }
+      document.getElementById('historyList').innerHTML = html;
+    }
+    function restoreHistory(index) {
+      const history = JSON.parse(localStorage.getItem('calculationHistory')) || [];
+      if(history[index] && history[index].type === "calculation") {
+        const data = history[index].inputs;
+        if(document.getElementById('beamLength')) document.getElementById('beamLength').value = data.beamLength || "";
+        if(document.getElementById('uniformLoad')) document.getElementById('uniformLoad').value = data.uniformLoad || "";
+        if(document.getElementById('dynamicFactor')) document.getElementById('dynamicFactor').value = data.dynamicFactor || "1";
+        if(document.getElementById('loadType1')) document.getElementById('loadType1').value = data.load1.type || "point";
+        if(document.getElementById('loadValue1')) document.getElementById('loadValue1').value = data.load1.value || "";
+        if(document.getElementById('loadPosition1')) document.getElementById('loadPosition1').value = data.load1.position || "";
+        if(document.getElementById('loadType2')) document.getElementById('loadType2').value = data.load2.type || "distributed";
+        if(document.getElementById('loadValue2')) document.getElementById('loadValue2').value = data.load2.value || "";
+        if(document.getElementById('loadPosition2')) document.getElementById('loadPosition2').value = data.load2.position || "";
+        if(document.getElementById('loadType3')) document.getElementById('loadType3').value = data.load3.type || "point";
+        if(document.getElementById('loadValue3')) document.getElementById('loadValue3').value = data.load3.value || "";
+        if(document.getElementById('loadPosition3')) document.getElementById('loadPosition3').value = data.load3.position || "";
+        loadInputs();
+        calculateLoadDistribution();
+        closeHistoryModal();
+        showToast("تم استعادة البيانات من السجل.");
+      } else {
+        showToast("لا يمكن استعادة سجل تسجيل الدخول.");
+      }
+    }
+    function showHistoryModal() { document.getElementById('historyModal').style.display = "flex"; }
+    function closeHistoryModal() { document.getElementById('historyModal').style.display = "none"; }
+    function clearHistory() {
+      localStorage.removeItem('calculationHistory');
+      loadHistory();
+      showToast("تم مسح سجل العمليات.");
+    }
+    
+    // دوال التصدير والطباعة
+    function printResult() { window.print(); }
+    function exportPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF("p", "mm", "a4");
+      doc.setFont("Arial", "normal");
+      doc.text("تقرير حاسبة توزيع الأحمال", 20, 20);
+      const results = document.getElementById("loadResultSection").innerText;
+      doc.text(results, 20, 40);
+      doc.text("يرجى مراجعة باقي الأقسام للحصول على التفاصيل الكاملة.", 20, 60);
+      doc.save("تقرير_توزيع_الأحمال.pdf");
+    }
+    function exportExcel() {
+      let data = [
+        ["Rₗ", document.getElementById('reactionLeft').innerText],
+        ["Rᵣ", document.getElementById('reactionRight').innerText],
+        ["أقصى جرف", document.getElementById('maxShear').innerText],
+        ["أقصى عزم", document.getElementById('maxMoment').innerText]
+      ];
+      let ws = XLSX.utils.aoa_to_sheet(data);
+      let wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "النتائج");
+      XLSX.writeFile(wb, "تقرير_توزيع_الأحمال.xlsx");
+    }
+    function copyToClipboardResult() {
+      const text = document.getElementById('loadResultSection').innerText;
+      const tempInput = document.createElement('textarea');
+      tempInput.value = text;
+      document.body.appendChild(tempInput);
+      tempInput.select();
+      document.execCommand('copy');
+      document.body.removeChild(tempInput);
+      showToast("تم نسخ النتيجة إلى الحافظة للمشاركة!");
+    }
+    
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.innerText = message;
+      toast.className = "show";
+      setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
+    }
+    
+    // تفعيل تبديل اللغة والوضع
+    let currentLanguage = "ar";
+    const translations = {
+      introduction: { ar: "المقدمة", en: "Introduction" },
+      dataSection: { ar: "البيانات الأساسية", en: "Basic Data" },
+      resultSection: { ar: "النتائج", en: "Results" },
+      chartSection: { ar: "الرسم البياني", en: "Chart" },
+      scenarioSection: { ar: "تحليل السيناريوهات", en: "Scenarios" },
+      advancedReport: { ar: "تقارير متقدمة لتوزيع الأحمال", en: "Advanced Report" },
+      financialStats: { ar: "المؤشرات الهندسية", en: "Engineering Indicators" },
+      recommendations: { ar: "التوصيات الهندسية", en: "Engineering Recommendations" },
+      userGuide: { ar: "دليل المستخدم", en: "User Guide" },
+      internationalStandards: { ar: "المعايير الدولية", en: "International Standards" },
+      importantNotes: { ar: "ملاحظات هامة", en: "Important Notes" },
+      references: { ar: "المراجع والمصادر", en: "References" },
+      history: { ar: "السجل", en: "History" }
+    };
+    function toggleLanguage() {
+      currentLanguage = (currentLanguage === "ar") ? "en" : "ar";
+      updateLanguage();
+    }
+    function updateLanguage() {
+      document.querySelectorAll("nav a.nav-item").forEach(el => {
+        const key = el.getAttribute("data-key");
+        if(translations[key]) {
+          el.innerHTML = `<i class="${el.getAttribute('data-icon')}"></i> ${translations[key][currentLanguage]}`;
+        }
+      });
+      document.querySelector("h1").innerText = (currentLanguage === "ar") ? "حاسبة توزيع الأحمال" : "Load Distribution Calculator";
+      document.getElementById("langToggle").innerHTML = `<i class="fas fa-language"></i> ${(currentLanguage === "ar") ? "English" : "عربي"}`;
+    }
+    function toggleDarkMode() {
+      document.body.classList.toggle("light-mode");
+      if(document.body.classList.contains("light-mode")) {
+        localStorage.setItem('mode', 'light');
+        document.getElementById("modeToggle").innerHTML = `<i class="fas fa-moon"></i> الوضع الليلي`;
+      } else {
+        localStorage.setItem('mode', 'dark');
+        document.getElementById("modeToggle").innerHTML = `<i class="fas fa-moon"></i> الوضع الفاتح`;
+      }
+    }
+    document.getElementById("langToggle").addEventListener("click", toggleLanguage);
+    document.getElementById("modeToggle").addEventListener("click", toggleDarkMode);
+  </script>
+  
+  <div id="toast"></div>
+</body>
+</html>
